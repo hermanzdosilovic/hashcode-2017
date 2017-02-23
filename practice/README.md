@@ -21,5 +21,5 @@ Combine this with input redirect:
 $ python greedy.py best/big.txt 100 < data/big.in
 ```
 
-## Results
-![results](https://github.com/hermanzdosilovic/hashcode-2017/blob/master/practice/results.png)
+## Score
+![score](https://github.com/hermanzdosilovic/hashcode-2017/blob/master/practice/score.png)

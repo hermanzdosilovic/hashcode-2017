@@ -52,12 +52,19 @@ while number_of_iterations >= 0:
     number_of_iterations -= 1
     visited = set()
     rectangles = []
+    area = 0
     for i in range(1, R + 1):
         for j in range(1, C + 1):
             if (i, j) in visited:
                 continue
             
             random.shuffle(slices)
+            slices_len = len(slices)
+            step = slices_len//4
+            for x in range(0, slices_len, step):
+                margin = min(x + step, slices_len)
+                slices[x:margin] = sorted(slices[x:margin], key=lambda x: x[0]*x[1], reverse=True)
+
             for s in slices: # s[0] is width, s[1] is height
                 if i + s[1] - 1 > R or j + s[0] - 1 > C:
                     continue
@@ -92,15 +99,14 @@ while number_of_iterations >= 0:
                     continue
 
                 rectangles.append((i - 1, j - 1, i + s[1] - 2, j + s[0] - 2))
+                area += s[0]*s[1]
+
                 for x in range(i, i + s[1]):
                     for y in range(j, j + s[0]):
                         visited |= {(x, y)}
 
-    area = 0
-    for rec in rectangles:
-        area += (rec[2] - rec[0] + 1)*(rec[3] - rec[1] + 1)
-
     if area > current_best_area:
+        print("New best area is:", area)
         current_best_area = area
         f = open(sys.argv[1], "w")
         print(len(rectangles), file=f)
