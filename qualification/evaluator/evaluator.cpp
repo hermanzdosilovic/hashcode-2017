@@ -22,7 +22,7 @@ int endpoint_connected[MAX_ENDPOINTS + 1]; // endpoint(i) is connected to endpoi
 
 // used for output files
 int number_of_cache_servers_used;
-int sum_video_size[MAX_CACHE_SERVERS + 1]; // for each cache server contains number
+long long sum_video_size[MAX_CACHE_SERVERS + 1]; // for each cache server contains number
 
 int V, E, R, C, X;
 
