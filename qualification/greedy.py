@@ -1,4 +1,5 @@
 import random
+import sys
 
 V, E, R, C, X = tuple(int(i) for i in input().split(" "))
 
@@ -52,21 +53,26 @@ def arrangement_is_valid(cache_server_videos_arrangement):
 
 for endpoint_id in range(E):
     sorted(endpoint_video_request[endpoint_id], key=lambda x: x[1], reverse=True)
-    #random.shuffle(endpoint_video_request[endpoint_id])
 
-cache_server_videos_arrangement = [[] for i in range(C)]
-for endpoint_id, endpoint_requests in enumerate(endpoint_video_request):
-    video_ids = set(x[0] for x in endpoint_requests)
-    for cache_server_id in endpoint_cache_server_connection[endpoint_id]:
-        for video_id in video_ids:
-            if video_id in cache_server_videos_arrangement[cache_server_id]:
-                continue
-            cache_server_videos_arrangement[cache_server_id].append(video_id)
-            if not total_size_of_videos_is_valid(cache_server_videos_arrangement[cache_server_id]):
-                cache_server_videos_arrangement[cache_server_id].pop()
-
-number_of_used_cache_servers = sum([len(x) != 0 for x in cache_server_videos_arrangement])
-print(number_of_used_cache_servers)
-for cache_server_id, video_ids in enumerate(cache_server_videos_arrangement):
-    print(cache_server_id, *video_ids)
+number_of_iterations = int(sys.argv[2])
+while number_of_iterations >= 0:
+    number_of_iterations -= 1
+    cache_server_videos_arrangement = [[] for i in range(C)]
+    for endpoint_id, endpoint_requests in enumerate(endpoint_video_request):
+        video_ids = set(x[0] for x in endpoint_requests)
+        for cache_server_id in endpoint_cache_server_connection[endpoint_id]:
+            for video_id in video_ids:
+                if video_id in cache_server_videos_arrangement[cache_server_id]:
+                    continue
+                cache_server_videos_arrangement[cache_server_id].append(video_id)
+                if not total_size_of_videos_is_valid(cache_server_videos_arrangement[cache_server_id]):
+                    cache_server_videos_arrangement[cache_server_id].pop()
+        random.shuffle(endpoint_video_request[endpoint_id])
+    
+    f = open(sys.argv[1] + "." + str(number_of_iterations), "w")
+    number_of_used_cache_servers = sum([len(x) != 0 for x in cache_server_videos_arrangement])
+    print(number_of_used_cache_servers, file=f)
+    for cache_server_id, video_ids in enumerate(cache_server_videos_arrangement):
+        print(cache_server_id, *video_ids, file=f)
+    f.close()
 
