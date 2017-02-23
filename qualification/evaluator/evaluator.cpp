@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cstring>
 #include <string>
+#include <vector>
+#include <algorithm>
 
 void ASSERT(bool expression, const std::string& msg, int output_line, int cache_index, int video_index) {
   if (!expression) {
@@ -10,11 +12,19 @@ void ASSERT(bool expression, const std::string& msg, int output_line, int cache_
   }
 }
 
-const int MAX_VIDEOS = 10000;
-const int MAX_ENDPOINTS = 1000;
-const int MAX_CACHE_SERVERS = 1000;
+struct Request {
+  int video;
+  int endpoint;
+  int number_of_requests;
+} request;
+
+constexpr int MAX_VIDEOS = 10000;
+constexpr int MAX_ENDPOINTS = 1000;
+constexpr int MAX_CACHE_SERVERS = 1000;
+constexpr int MAX_REQUESTS = 1000000;
 
 // used for input files
+std::vector<int> cache_server_data[MAX_CACHE_SERVERS + 1]; // for each cache server contains videos
 int video_size[MAX_VIDEOS + 1];
 int endpoint_datacenter_latency[MAX_ENDPOINTS + 1]; // latency of endpoint to datacenter
 int endpoint_cache_latency[MAX_ENDPOINTS + 1][MAX_CACHE_SERVERS + 1];
@@ -23,6 +33,14 @@ int endpoint_connected[MAX_ENDPOINTS + 1]; // endpoint(i) is connected to endpoi
 // used for output files
 int number_of_cache_servers_used;
 long long sum_video_size[MAX_CACHE_SERVERS + 1]; // for each cache server contains number
+
+/**
+● V​ (1 ≤ V ≤ 10000) - the number of videos
+● E (1 ≤ E ≤ 1000) - the number of endpoints
+● R (1 ≤ R ≤ 1000000) - the number of request descriptions
+● C (1 ≤ C ≤ 1000) - the number of cache servers
+● X (1 ≤ X ≤ 500000) - the capacity of each cache server in megabytes
+*/
 
 int V, E, R, C, X;
 
@@ -48,7 +66,10 @@ int main(int argc, char* argv[]) {
       endpoint_cache_latency[i][cache_id] = latency;
     }
   }
-  fclose(fp_input);
+  //for (int i = 0; i < R; ++i) {
+  //  fscanf(fp_input, "%d %d %d", &requests[i].video, &requests[i].endpoint, &requests[i].number_of_requests);
+  //}
+  //fclose(fp_input);
 
   int current_cache = -1;
   int output_line = 0;
@@ -65,6 +86,7 @@ int main(int argc, char* argv[]) {
       sum_video_size[current_cache] += video_size[first];
       //printf("cache id = %d, cache size = %d\n", current_cache, sum_video_size[current_cache]);
       ASSERT(sum_video_size[current_cache] <= X, "Maximum cache size excceded! Line = ", output_line, current_cache, first);
+      cache_server_data[current_cache].push_back(first);
     }
 
     if (current_cache == -1) {
@@ -76,9 +98,31 @@ int main(int argc, char* argv[]) {
       ++output_line;
     }
   }
-
   fclose(fp_output);
 
-  printf("Output is correct!\n");
+  printf("\nOutput is correct!\n");
+
+  for (int i = 0; i < C; ++i) {
+    std::sort(cache_server_data[i].begin(), cache_server_data[i].end());
+  }
+
+  long long total_time_in_miliseconds{0ULL};
+  long long total_time_saved{0ULL};
+  long long total_number_of_requests{0ULL};
+
+  while (fscanf(fp_input, "%d %d %d", &request.video, &request.endpoint, &request.number_of_requests) == 3) {
+    int min_time = endpoint_datacenter_latency[request.endpoint];
+    for (int i = 0; i < C; ++i) {
+      if (~endpoint_cache_latency[request.endpoint][i]) {
+        if (std::binary_search(cache_server_data[i].begin(), cache_server_data[i].end(), request.video)) {
+          min_time = std::min(min_time, endpoint_cache_latency[request.endpoint][i]);
+        }
+      }
+    }
+    total_time_saved += (endpoint_datacenter_latency[request.endpoint] - min_time) * request.number_of_requests;
+    total_number_of_requests += request.number_of_requests;
+  }
+
+  printf("Total time saved: %lld microseconds!\n\n", static_cast<long long>((total_time_saved * 1000.0) / total_number_of_requests));
   return 0;
 }
