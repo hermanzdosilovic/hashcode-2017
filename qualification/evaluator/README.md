@@ -1,6 +1,13 @@
-1. run make
-2. ./evaluator input_file output_file
+# Evaluator
 
-Example for 2nd step:
+1. Compile
 
-./evaluator example.in example.out
+    ```
+    $ make
+    ```
+
+2. Run
+
+    ```
+    $ ./evaluator <official_input_file> <your_output_file>
+    ```
