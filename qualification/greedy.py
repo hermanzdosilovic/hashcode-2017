@@ -7,72 +7,70 @@ video_size = tuple(int(i) for i in input().split(" "))
 
 endpoint_to_data_center_latency = []
 endpoint_to_cache_server_latency = [[0 for i in range(C)] for j in range(E)]
-endpoint_cache_server_connection = [[] for i in range(E)]
-cache_server_endpoint_connection = [[] for i in range(C)]
 for e in range(E):
     Ld, K = tuple(int(i) for i in input().split(" "))
     endpoint_to_data_center_latency.append(Ld)
     for k in range(K):
         c, Lc = tuple(int(i) for i in input().split(" "))
         endpoint_to_cache_server_latency[e][c] = Lc
-        endpoint_cache_server_connection[e].append(c)
-        cache_server_endpoint_connection[c].append(e)
 
-endpoint_video_request = [[] for i in range(E)]
+endpoint_video_request = [[0 for i in range(V)] for j in range(E)]
+total_number_of_requests = 0
 for r in range(R):
     Rv, Re, Rn = tuple(int(i) for i in input().split(" "))
-    endpoint_video_request[Re].append((Rv, Rn))
+    endpoint_video_request[Re][Rv] = Rn
+    total_number_of_requests += Rn
 
-
-def calculate_total_latency(cache_server_videos_arrangement):
-    total_latency = 0
-    for endpoint_id, endpoint_requests in enumerate(endpoint_video_request):
-        for video_id, number_of_requests in endpoint_requests:
-            min_latency = endpoint_to_data_center_latency[endpoint_id]
-            for cache_server_id in endpoint_cache_server_connection[endpoint_id]:
-                if video_id in cache_server_videos_arrangement[cache_server_id]:
-                    min_latency = min(min_latency, endpoint_to_cache_server_latency[endpoint_id][cache_server_id])
-            total_latency += min_latency*number_of_requests
-    return total_latency
-
-
-def total_size_of_videos(video_ids):
-    return sum([video_size[video_id] for video_id in video_ids])
-
-
-def total_size_of_videos_is_valid(video_ids):
-    return total_size_of_videos(video_ids) <= X
-
-
-def arrangement_is_valid(cache_server_videos_arrangement):
-    for video_ids in cache_server_videos_arrangement:
-        if not total_size_of_videos_is_valid(video_ids):
-            return False
-    return True
-
-
+endpoint_video_request_queue = [[] for i in range(E)]
 for endpoint_id in range(E):
-    sorted(endpoint_video_request[endpoint_id], key=lambda x: x[1], reverse=True)
+    endpoint_video_request_queue[endpoint_id] = [(x, i) for i, x in enumerate(endpoint_video_request[endpoint_id]) if x]
+    endpoint_video_request_queue[endpoint_id].sort(reverse=True)
 
 number_of_iterations = int(sys.argv[2])
-while number_of_iterations >= 0:
+best_score = 0
+while number_of_iterations > 0:
     number_of_iterations -= 1
-    cache_server_videos_arrangement = [[] for i in range(C)]
-    for endpoint_id, endpoint_requests in enumerate(endpoint_video_request):
-        video_ids = set(x[0] for x in endpoint_requests)
-        for cache_server_id in endpoint_cache_server_connection[endpoint_id]:
-            for video_id in video_ids:
-                if video_id in cache_server_videos_arrangement[cache_server_id]:
-                    continue
-                cache_server_videos_arrangement[cache_server_id].append(video_id)
-                if not total_size_of_videos_is_valid(cache_server_videos_arrangement[cache_server_id]):
-                    cache_server_videos_arrangement[cache_server_id].pop()
-        random.shuffle(endpoint_video_request[endpoint_id])
-    
-    f = open(sys.argv[1] + "." + str(number_of_iterations), "w")
-    number_of_used_cache_servers = sum([len(x) != 0 for x in cache_server_videos_arrangement])
-    print(number_of_used_cache_servers, file=f)
-    for cache_server_id, video_ids in enumerate(cache_server_videos_arrangement):
-        print(cache_server_id, *video_ids, file=f)
-    f.close()
+    cache_server_video_arrangement = [[False for i in range(V)] for j in range(C)]
+    cache_server_availability = [X for i in range(C)]
 
+    for endpoint_id, video_requests in enumerate(endpoint_video_request_queue):
+        for number_of_requests, video_id in video_requests:
+            for cache_server_id in range(C):
+                if not endpoint_to_cache_server_latency[endpoint_id][cache_server_id]:
+                    continue
+                elif cache_server_availability[cache_server_id] - video_size[video_id] < 0:
+                    continue
+                cache_server_availability[cache_server_id] -= video_size[video_id]
+                cache_server_video_arrangement[cache_server_id][video_id] = True
+                break
+        random.shuffle(endpoint_video_request_queue[endpoint_id])
+    
+    current_latency_save = 0
+    for endpoint_id, video_requests in enumerate(endpoint_video_request_queue):
+        for number_of_requests, video_id in video_requests:
+            min_latency = endpoint_to_data_center_latency[endpoint_id]
+            for cache_server_id in range(C):
+                if not endpoint_to_cache_server_latency[endpoint_id][cache_server_id]:
+                    continue
+                elif not cache_server_video_arrangement[cache_server_id][video_id]:
+                    continue
+                min_latency = min(
+                    min_latency,
+                    endpoint_to_cache_server_latency[endpoint_id][cache_server_id]
+                )
+            current_latency_save += (endpoint_to_data_center_latency[endpoint_id] - min_latency)*number_of_requests
+
+    current_score = round(current_latency_save/total_number_of_requests*1000) 
+    if current_score > best_score:
+        best_score = current_score
+        print("New best score:", best_score, file=sys.stderr)
+        
+        f = open(sys.argv[1], "w")
+        number_of_cache_servers = C - cache_server_availability.count(X)
+        print(number_of_cache_servers, file=f)
+        for cache_server_id in range(C):
+            if cache_server_availability[cache_server_id] == X:
+                continue
+            print(cache_server_id, *[i for i in range(V) if cache_server_video_arrangement[cache_server_id][i]], file=f)
+        f.close()
+        print("Finding new best score ...")
